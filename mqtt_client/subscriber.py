@@ -8,6 +8,10 @@ AWS_PORT     = 8883
 CERT_DIR     = os.getenv("CERT_DIR", "/app/certs")
 TOPIC        = "campo/sensores"
 
+ca_path = os.path.join(CERT_DIR, os.getenv("AWS_IOT_CA_FILE", "AmazonRootCA1.pem"))
+cert_path = os.path.join(CERT_DIR, os.getenv("AWS_IOT_CERT_FILE", "certificate.pem.crt"))
+key_path = os.path.join(CERT_DIR, os.getenv("AWS_IOT_KEY_FILE", "private.pem.key"))
+
 def conectar_mongo(reintentos=10, espera=3):
     for intento in range(1, reintentos + 1):
         try:
@@ -42,9 +46,9 @@ def on_message(client, userdata, msg):
 
 client = mqtt.Client(client_id="subscriber_agro", protocol=mqtt.MQTTv311)
 client.tls_set(
-    ca_certs=f"{CERT_DIR}/AmazonRootCA1.pem",
-    certfile=f"{CERT_DIR}/certificate.pem.crt",
-    keyfile=f"{CERT_DIR}/private.pem.key",
+    ca_certs=ca_path,
+    certfile=cert_path,
+    keyfile=key_path,
     tls_version=ssl.PROTOCOL_TLSv1_2
 )
 client.on_connect = on_connect

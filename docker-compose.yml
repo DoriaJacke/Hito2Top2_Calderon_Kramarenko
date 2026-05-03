@@ -1,5 +1,14 @@
 version: '3.8'
 
+# Nombres de archivos en ./certs (AWS IoT). Si renombrás a AmazonRootCA1.pem,
+# certificate.pem.crt y private.pem.key, podés quitar estas tres variables.
+x-aws-iot-tls: &aws-iot-tls
+  AWS_IOT_ENDPOINT: a2apsmaa0mdv52-ats.iot.us-east-1.amazonaws.com
+  CERT_DIR: /app/certs
+  AWS_IOT_CA_FILE: "AmazonRootCA1 (1).pem"
+  AWS_IOT_CERT_FILE: "9815564b6b3efa85dfe4870333e06e90b073c1f6e71b9165985ec0507b10cf28-certificate.pem.crt"
+  AWS_IOT_KEY_FILE: "9815564b6b3efa85dfe4870333e06e90b073c1f6e71b9165985ec0507b10cf28-private.pem.key"
+
 services:
   mongodb:
     image: mongo:7.0
@@ -22,17 +31,15 @@ services:
       - mongodb
     restart: on-failure
     environment:
-      - AWS_IOT_ENDPOINT=a2apsmaa0mdv52-ats.iot.us-east-1.amazonaws.com
-      - CERT_DIR=/app/certs
+      <<: *aws-iot-tls
     volumes:
       - ./certs:/app/certs:ro
 
   sensor1:
     build: ./sensors
     environment:
-      - SENSOR_ID=1
-      - AWS_IOT_ENDPOINT=a2apsmaa0mdv52-ats.iot.us-east-1.amazonaws.com
-      - CERT_DIR=/app/certs
+      <<: *aws-iot-tls
+      SENSOR_ID: "1"
     restart: on-failure
     volumes:
       - ./certs:/app/certs:ro
@@ -40,9 +47,8 @@ services:
   sensor2:
     build: ./sensors
     environment:
-      - SENSOR_ID=2
-      - AWS_IOT_ENDPOINT=a2apsmaa0mdv52-ats.iot.us-east-1.amazonaws.com
-      - CERT_DIR=/app/certs
+      <<: *aws-iot-tls
+      SENSOR_ID: "2"
     restart: on-failure
     volumes:
       - ./certs:/app/certs:ro

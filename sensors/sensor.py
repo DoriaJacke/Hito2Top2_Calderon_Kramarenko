@@ -1,17 +1,21 @@
 import paho.mqtt.client as mqtt
 import time, random, os, json, ssl
 
-sensor_id        = os.getenv("SENSOR_ID", "0")
-AWS_ENDPOINT     = os.getenv("AWS_IOT_ENDPOINT", "a2apsmaa0mdv52-ats.iot.us-east-1.amazonaws.com")
-AWS_PORT         = 8883
-CERT_DIR         = os.getenv("CERT_DIR", "/app/certs")
-TOPIC            = "campo/sensores"
+sensor_id    = os.getenv("SENSOR_ID", "0")
+AWS_ENDPOINT = os.getenv("AWS_IOT_ENDPOINT", "a2apsmaa0mdv52-ats.iot.us-east-1.amazonaws.com")
+AWS_PORT     = 8883
+CERT_DIR     = os.getenv("CERT_DIR", "/app/certs")
+TOPIC        = "campo/sensores"
+
+ca_path = os.path.join(CERT_DIR, os.getenv("AWS_IOT_CA_FILE", "AmazonRootCA1.pem"))
+cert_path = os.path.join(CERT_DIR, os.getenv("AWS_IOT_CERT_FILE", "certificate.pem.crt"))
+key_path = os.path.join(CERT_DIR, os.getenv("AWS_IOT_KEY_FILE", "private.pem.key"))
 
 client = mqtt.Client(client_id=f"sensor_{sensor_id}", protocol=mqtt.MQTTv311)
 client.tls_set(
-    ca_certs=f"{CERT_DIR}/AmazonRootCA1.pem",
-    certfile=f"{CERT_DIR}/certificate.pem.crt",
-    keyfile=f"{CERT_DIR}/private.pem.key",
+    ca_certs=ca_path,
+    certfile=cert_path,
+    keyfile=key_path,
     tls_version=ssl.PROTOCOL_TLSv1_2
 )
 
