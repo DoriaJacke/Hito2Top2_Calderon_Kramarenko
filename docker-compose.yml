@@ -32,23 +32,98 @@ services:
     restart: on-failure
     environment:
       <<: *aws-iot-tls
+      MQTT_ZONE: zona_sur_calderon_kramarenko
+      MQTT_TOPIC_SUBSCRIBE: sensor/zona_sur_calderon_kramarenko/#
     volumes:
       - ./certs:/app/certs:ro
 
-  sensor1:
+  # Tópico MQTT: sensor/zona_sur_calderon_kramarenko/<SENSOR_NAME>
+  sensor_temperatura_ambiente:
     build: ./sensors
     environment:
       <<: *aws-iot-tls
-      SENSOR_ID: "1"
+      MQTT_ZONE: zona_sur_calderon_kramarenko
+      SENSOR_NAME: temperatura_ambiente
     restart: on-failure
     volumes:
       - ./certs:/app/certs:ro
 
-  sensor2:
+  sensor_humedad_relativa:
     build: ./sensors
     environment:
       <<: *aws-iot-tls
-      SENSOR_ID: "2"
+      MQTT_ZONE: zona_sur_calderon_kramarenko
+      SENSOR_NAME: humedad_relativa
+    restart: on-failure
+    volumes:
+      - ./certs:/app/certs:ro
+
+  sensor_vibracion:
+    build: ./sensors
+    environment:
+      <<: *aws-iot-tls
+      MQTT_ZONE: zona_sur_calderon_kramarenko
+      SENSOR_NAME: vibracion
+    restart: on-failure
+    volumes:
+      - ./certs:/app/certs:ro
+
+  sensor_toneladas_hora:
+    build: ./sensors
+    environment:
+      <<: *aws-iot-tls
+      MQTT_ZONE: zona_sur_calderon_kramarenko
+      SENSOR_NAME: toneladas_hora
+    restart: on-failure
+    volumes:
+      - ./certs:/app/certs:ro
+
+  sensor_ciclos_completados:
+    build: ./sensors
+    environment:
+      <<: *aws-iot-tls
+      MQTT_ZONE: zona_sur_calderon_kramarenko
+      SENSOR_NAME: ciclos_completados
+    restart: on-failure
+    volumes:
+      - ./certs:/app/certs:ro
+
+  sensor_ph:
+    build: ./sensors
+    environment:
+      <<: *aws-iot-tls
+      MQTT_ZONE: zona_sur_calderon_kramarenko
+      SENSOR_NAME: ph
+    restart: on-failure
+    volumes:
+      - ./certs:/app/certs:ro
+
+  sensor_co2:
+    build: ./sensors
+    environment:
+      <<: *aws-iot-tls
+      MQTT_ZONE: zona_sur_calderon_kramarenko
+      SENSOR_NAME: co2
+    restart: on-failure
+    volumes:
+      - ./certs:/app/certs:ro
+
+  sensor_so2:
+    build: ./sensors
+    environment:
+      <<: *aws-iot-tls
+      MQTT_ZONE: zona_sur_calderon_kramarenko
+      SENSOR_NAME: so2
+    restart: on-failure
+    volumes:
+      - ./certs:/app/certs:ro
+
+  sensor_material_particulado:
+    build: ./sensors
+    environment:
+      <<: *aws-iot-tls
+      MQTT_ZONE: zona_sur_calderon_kramarenko
+      SENSOR_NAME: material_particulado
     restart: on-failure
     volumes:
       - ./certs:/app/certs:ro
