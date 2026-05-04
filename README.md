@@ -34,7 +34,7 @@ El broker MQTT en la nube es **AWS IoT Core** (no Mosquitto local). Los tópicos
 ## Requisitos previos
 
 - [Docker](https://docs.docker.com/get-docker/) y [Docker Compose](https://docs.docker.com/compose/install/) v2
-- Credenciales **AWS IoT** (CA, certificado de dispositivo y clave privada) en la carpeta **`certs/`** (no se versiona; está en `.gitignore`). Los nombres de archivo deben coincidir con las variables del `docker-compose.yml` (anchor `x-aws-iot-tls`) o renombrá los PEM y ajustá esas variables.
+- **Certificados AWS IoT en la carpeta `certs/`** (obligatorio antes de levantar sensores y el suscriptor): tenés que **agregar manualmente** en `certs/` la CA raíz, el certificado de dispositivo y la clave privada que descargues o generes en la consola de AWS IoT. Esos archivos **no** se suben al repositorio (`.gitignore` ignora el contenido de `certs/` salvo `certs/README.md`). Los **nombres** de los archivos deben coincidir con lo definido en `docker-compose.yml` (bloque `x-aws-iot-tls`: `AWS_IOT_CA_FILE`, `AWS_IOT_CERT_FILE`, `AWS_IOT_KEY_FILE`) o renombrá los PEM y actualizá esas variables.
 
 ```bash
 docker --version
@@ -53,7 +53,7 @@ docker compose version
 │   ├── provisioning/           # Datasource Prometheus + dashboards
 │   └── dashboards/
 │       └── iot-observability.json
-├── certs/                      # AWS IoT TLS (local, no en git)
+├── certs/                      # Agregar aquí los PEM (no se versionan; ver README dentro de certs)
 ├── sensors/
 │   ├── Dockerfile
 │   └── sensor.py               # Simulación por tipo de sensor → publish MQTT
@@ -73,9 +73,13 @@ docker compose version
 
 ## Puesta en marcha
 
-### 1. Certificados
+### 1. Agregar certificados en `certs/`
 
-Colocá en `certs/` los archivos de TLS que uses en `docker-compose.yml` (`AWS_IOT_CA_FILE`, `AWS_IOT_CERT_FILE`, `AWS_IOT_KEY_FILE`).
+1. En la raíz del proyecto abrí o creá la carpeta **`certs/`** (en el repo ya existe con un `README.md` de referencia).
+2. **Copiá dentro de `certs/`** los tres archivos TLS de tu entorno AWS IoT (CA, certificado público, clave privada).
+3. Verificá que los **nombres de archivo** coincidan con `AWS_IOT_CA_FILE`, `AWS_IOT_CERT_FILE` y `AWS_IOT_KEY_FILE` en `docker-compose.yml`, o renombrá los archivos / editá esas variables para que apunten a los nombres reales.
+
+Sin estos archivos, los contenedores que montan `./certs:/app/certs` no podrán conectarse a AWS IoT Core.
 
 ### 2. Levantar el stack
 
