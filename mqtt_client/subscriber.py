@@ -6,9 +6,9 @@ from pymongo.errors import ConnectionFailure
 AWS_ENDPOINT = os.getenv("AWS_IOT_ENDPOINT", "a2apsmaa0mdv52-ats.iot.us-east-1.amazonaws.com")
 AWS_PORT     = 8883
 CERT_DIR     = os.getenv("CERT_DIR", "/app/certs")
-# Wildcard: todos los sensores bajo sensor/<zona>/...
+# Wildcard: todos los sensores bajo mina/<zona>/...
 MQTT_ZONE       = os.getenv("MQTT_ZONE", "zona_sur_calderon_kramarenko")
-TOPIC_SUBSCRIBE = os.getenv("MQTT_TOPIC_SUBSCRIBE", f"sensor/{MQTT_ZONE}/#")
+TOPIC_SUBSCRIBE = os.getenv("MQTT_TOPIC_SUBSCRIBE", f"mina/{MQTT_ZONE}/#")
 
 ca_path = os.path.join(CERT_DIR, os.getenv("AWS_IOT_CA_FILE", "AmazonRootCA1.pem"))
 cert_path = os.path.join(CERT_DIR, os.getenv("AWS_IOT_CERT_FILE", "certificate.pem.crt"))
@@ -43,7 +43,7 @@ def on_message(client, userdata, msg):
         data["timestamp"] = time.strftime("%Y-%m-%d %H:%M:%S")
         data["mqtt_topic"] = msg.topic
         partes = msg.topic.strip("/").split("/")
-        if len(partes) >= 3 and partes[0] == "sensor":
+        if len(partes) >= 3 and partes[0] == "mina":
             data["zona_topic"] = partes[1]
             data["sensor_topic"] = partes[2]
         coleccion.insert_one(data)

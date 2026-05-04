@@ -7,13 +7,13 @@ import time
 
 # Zona fija del grupo (prioridad #1 — convención de tópicos)
 MQTT_ZONE = os.getenv("MQTT_ZONE", "zona_sur_calderon_kramarenko")
-# Último segmento del topic: sensor/<zona>/<SENSOR_NAME>
+# Último segmento del topic: mina/<zona>/<SENSOR_NAME>
 SENSOR_NAME = os.getenv("SENSOR_NAME", os.getenv("SENSOR_ID", "sensor_generico"))
 
 AWS_ENDPOINT = os.getenv("AWS_IOT_ENDPOINT", "a2apsmaa0mdv52-ats.iot.us-east-1.amazonaws.com")
 AWS_PORT = 8883
 CERT_DIR = os.getenv("CERT_DIR", "/app/certs")
-TOPIC = f"sensor/{MQTT_ZONE}/{SENSOR_NAME}"
+TOPIC = f"mina/{MQTT_ZONE}/{SENSOR_NAME}"
 
 ca_path = os.path.join(CERT_DIR, os.getenv("AWS_IOT_CA_FILE", "AmazonRootCA1.pem"))
 cert_path = os.path.join(CERT_DIR, os.getenv("AWS_IOT_CERT_FILE", "certificate.pem.crt"))

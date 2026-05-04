@@ -33,11 +33,11 @@ services:
     environment:
       <<: *aws-iot-tls
       MQTT_ZONE: zona_sur_calderon_kramarenko
-      MQTT_TOPIC_SUBSCRIBE: sensor/zona_sur_calderon_kramarenko/#
+      MQTT_TOPIC_SUBSCRIBE: mina/zona_sur_calderon_kramarenko/#
     volumes:
       - ./certs:/app/certs:ro
 
-  # Tópico MQTT: sensor/zona_sur_calderon_kramarenko/<SENSOR_NAME>
+  # Tópico MQTT: mina/zona_sur_calderon_kramarenko/<SENSOR_NAME>
   sensor_temperatura_ambiente:
     build: ./sensors
     environment:
