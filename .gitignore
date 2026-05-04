@@ -1,1 +1,7 @@
-certs/
+# Configuración local (otro equipo: copiar env.example → .env)
+.env
+
+# Certificados AWS IoT (sí versionar la carpeta; no los PEM/clave).
+# Usar certs/* (no certs/) para poder hacer excepciones con !.
+certs/*
+!certs/README.md
