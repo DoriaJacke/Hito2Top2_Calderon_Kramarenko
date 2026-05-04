@@ -71,6 +71,7 @@ while True:
     }
 
     if random.random() > 0.2:
+        data["published_ts_ms"] = int(time.time() * 1000)
         client.publish(TOPIC, json.dumps(data), qos=1)
         print(f"[{SENSOR_NAME}] Enviado: {data}")
     else:

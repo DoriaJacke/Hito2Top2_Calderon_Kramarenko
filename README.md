@@ -1,35 +1,40 @@
-# IoT Agro Project
+# Monitoreo minero — Zona Sur (Calderón Kramarenko)
 
-Demo de sensorización agrícola basado en **MQTT** + **REST API**. Simula dos sensores de campo que publican datos de temperatura y humedad, los persiste mediante un suscriptor MQTT, los expone con una API Flask y los muestra en un dashboard Streamlit.
+Proyecto de demostración **IoT** para una zona minera simulada: varios **publicadores MQTT** (sensores simulados) envían telemetría por **AWS IoT Core**, un **suscriptor** persiste las lecturas en **MongoDB**, una **API REST** expone consultas y un **dashboard Streamlit** muestra tabla y gráficos de tendencia. Incluye **Prometheus** y **Grafana** para métricas operativas (latencia, frecuencia, volumen).
 
 ---
 
 ## Arquitectura
 
 ```
-[sensor1] ──┐
-            ├──► [Mosquitto MQTT :1883] ──► [subscriber] ──► logs.txt (volumen compartido)
-[sensor2] ──┘                                                      │
-                                                                    ▼
-[frontend :8501] ◄──── GET /logs ──── [rest_api :5000] ◄───────────┘
+[sensores N] ──TLS/MQTT──► AWS IoT Core ──TLS/MQTT──► [subscriber] ──► MongoDB (agro_iot.lecturas)
+       ▲                                                    │
+       │                                                    │ métricas :8000/metrics
+       │                                                    ▼
+       │                                            [Prometheus] ──► [Grafana :3000]
+
+[frontend :8501] ──HTTP──► [rest_api :5000] ──► MongoDB
 ```
 
-| Servicio    | Tecnología          | Puerto |
-|-------------|---------------------|--------|
-| `mqtt`      | Eclipse Mosquitto   | 1883   |
-| `rest_api`  | Flask               | 5000   |
-| `subscriber`| paho-mqtt (Python)  | —      |
-| `sensor1/2` | paho-mqtt (Python)  | —      |
-| `frontend`  | Streamlit           | 8501   |
+| Servicio | Rol | Puerto (host) |
+|----------|-----|-----------------|
+| `mongodb` | Base de datos | 27017 |
+| `subscriber` | Suscripción MQTT → inserts en Mongo + métricas Prometheus | 8000 (`/metrics`) |
+| `rest_api` | Flask: `/logs`, `/variables`, `/series` | 5000 |
+| `sensor_*` | Publicadores simulados (uno por variable de medición) | — |
+| `frontend` | Streamlit: tabla + tendencias (Plotly) | 8501 |
+| `mongodb_exporter` | Métricas MongoDB para Prometheus | 9216 |
+| `prometheus` | Recolección de series temporales | 9090 |
+| `grafana` | Dashboards (usuario/contraseña por defecto `admin` / `admin`) | 3000 |
+
+El broker MQTT en la nube es **AWS IoT Core** (no Mosquitto local). Los tópicos siguen la forma `mina/<zona>/<sensor>` (por ejemplo `mina/zona_sur_calderon_kramarenko/so2`).
 
 ---
 
 ## Requisitos previos
 
-- [Docker](https://docs.docker.com/get-docker/) >= 20.10
-- [Docker Compose](https://docs.docker.com/compose/install/) >= 2.0
-
-Verificar instalación:
+- [Docker](https://docs.docker.com/get-docker/) y [Docker Compose](https://docs.docker.com/compose/install/) v2
+- Credenciales **AWS IoT** (CA, certificado de dispositivo y clave privada) en la carpeta **`certs/`** (no se versiona; está en `.gitignore`). Los nombres de archivo deben coincidir con las variables del `docker-compose.yml` (anchor `x-aws-iot-tls`) o renombrá los PEM y ajustá esas variables.
 
 ```bash
 docker --version
@@ -38,98 +43,100 @@ docker compose version
 
 ---
 
-## Estructura del proyecto
+## Estructura del repositorio
 
 ```
-iot_agro_project/
 ├── docker-compose.yml
-├── mosquitto.conf          # Configuración del broker MQTT
-├── README.md
-├── frontend/
+├── prometheus/
+│   └── prometheus.yml          # Scrapes: subscriber, mongodb_exporter
+├── grafana/
+│   ├── provisioning/           # Datasource Prometheus + dashboards
+│   └── dashboards/
+│       └── iot-observability.json
+├── certs/                      # AWS IoT TLS (local, no en git)
+├── sensors/
 │   ├── Dockerfile
-│   └── app.py              # Dashboard Streamlit
+│   └── sensor.py               # Simulación por tipo de sensor → publish MQTT
 ├── mqtt_client/
 │   ├── Dockerfile
-│   └── subscriber.py       # Suscriptor MQTT → escribe logs
+│   └── subscriber.py           # MQTT → MongoDB + /metrics (Prometheus)
 ├── rest_api/
 │   ├── Dockerfile
-│   └── app.py              # API Flask GET /logs
-└── sensors/
-    ├── Dockerfile
-    └── sensor.py           # Sensor simulado (temperatura + humedad)
+│   └── app.py                  # Flask + PyMongo
+├── frontend/
+│   ├── Dockerfile
+│   └── app.py                  # Streamlit + Plotly
+└── README.md
 ```
 
 ---
 
-## Instrucciones de ejecución
+## Puesta en marcha
 
-### 1. Clonar / posicionarse en el directorio
+### 1. Certificados
 
-```bash
-cd iot_agro_project
-```
+Colocá en `certs/` los archivos de TLS que uses en `docker-compose.yml` (`AWS_IOT_CA_FILE`, `AWS_IOT_CERT_FILE`, `AWS_IOT_KEY_FILE`).
 
-### 2. Construir y levantar todos los servicios
+### 2. Levantar el stack
 
 ```bash
-docker compose up --build
+cd Hito2Top2_Calderon_Kramarenko   # o la ruta donde clonaste el repo
+docker compose up --build -d
 ```
 
-> La primera vez puede tardar varios minutos mientras se descargan las imágenes base y se instalan dependencias.
+La primera ejecución puede tardar por imágenes y builds.
 
-### 3. Verificar que los servicios están corriendo
+### 3. Comprobar servicios
 
 ```bash
 docker compose ps
 ```
 
-Deberías ver los 6 servicios con estado `Up` o `running`.
+Deberías ver contenedores en estado `running` (MongoDB, API, suscriptor, sensores, frontend, Prometheus, Grafana, exporter).
 
-### 4. Abrir el dashboard
+### 4. URLs útiles
 
-Abre el navegador en:
+| Qué | URL |
+|-----|-----|
+| Dashboard Streamlit | http://localhost:8501 |
+| API REST | http://localhost:5000 |
+| Prometheus | http://localhost:9090 |
+| Grafana | http://localhost:3000 (admin / admin en demo) |
+| Métricas del suscriptor | http://localhost:8000/metrics |
 
-```
-http://localhost:8501
-```
+En el frontend: primero se muestra la **tabla** de últimas lecturas; debajo, **tendencias** con grilla de **2 columnas** y **30 puntos** por variable seleccionada. El botón **Actualizar datos** fuerza un refresco desde el servidor.
 
-Presiona el botón **"Actualizar"** para ver los últimos 20 registros recibidos por los sensores.
-
-### 5. Consultar la API directamente (opcional)
-
-```bash
-curl http://localhost:5000/logs
-```
-
-Respuesta esperada: array JSON con líneas de log como:
-
-```json
-[
-  "2024-06-01 12:00:03 - {'sensor_id': '1', 'temperatura': 22.5, 'humedad': 65.3}\n",
-  "2024-06-01 12:00:06 - {'sensor_id': '2', 'temperatura': 18.1, 'humedad': 72.0}\n"
-]
-```
-
-### 6. Ver logs de un servicio específico
+### 5. API (ejemplos)
 
 ```bash
-# Logs del suscriptor MQTT
+# Últimas 20 lecturas (todas o filtradas por campo presente en el documento)
+curl "http://localhost:5000/logs"
+curl "http://localhost:5000/logs?variable=so2_ppm"
+
+# Nombres de campos de medición vistos en documentos recientes
+curl "http://localhost:5000/variables"
+
+# Series temporales (hasta 16 variables; limit entre 10 y 2000)
+curl "http://localhost:5000/series?variables=so2_ppm,temperatura_c&limit=30"
+```
+
+La respuesta de `/logs` es un **array de documentos** JSON (campos como `timestamp`, `mqtt_topic`, métricas según sensor), no líneas de texto de log.
+
+### 6. Logs de contenedores
+
+```bash
 docker compose logs -f subscriber
-
-# Logs de un sensor
-docker compose logs -f sensor1
-
-# Logs de la API
 docker compose logs -f rest_api
+docker compose logs -f sensor_so2
 ```
 
-### 7. Detener el proyecto
+### 7. Detener y limpiar
 
 ```bash
 docker compose down
 ```
 
-Para eliminar también el volumen de logs:
+Para borrar también los datos persistentes de MongoDB:
 
 ```bash
 docker compose down -v
@@ -137,42 +144,50 @@ docker compose down -v
 
 ---
 
-## Descripción de cada componente
+## Componentes (resumen)
 
 ### `sensors/sensor.py`
-Simula un sensor de campo. Cada 3 segundos genera valores aleatorios de temperatura (10–35 °C) y humedad (30–90 %) y los publica en el topic MQTT `campo/sensores`. Con un 20 % de probabilidad simula un fallo de red y omite el envío.
+
+Simula un sensor según `SENSOR_NAME` (temperatura, humedad, SO₂, etc.). Cada ~3 s publica JSON en `mina/<MQTT_ZONE>/<SENSOR_NAME>` con TLS hacia AWS IoT. Incluye `published_ts_ms` para estimar latencia en el suscriptor. Con ~20 % de probabilidad simula fallo de red y no publica.
 
 ### `mqtt_client/subscriber.py`
-Se suscribe al topic `campo/sensores` y escribe cada mensaje recibido en `/app/shared/logs.txt` (volumen Docker compartido con la API).
+
+Se suscribe al comodín configurado (por defecto `mina/zona_sur_calderon_kramarenko/#`), inserta documentos en `agro_iot.lecturas` y expone métricas **Prometheus** en el puerto configurado (`METRICS_PORT`, por defecto 8000).
 
 ### `rest_api/app.py`
-API Flask con un único endpoint:
 
-| Método | Ruta    | Descripción                          |
-|--------|---------|--------------------------------------|
-| GET    | `/logs` | Devuelve las últimas 20 líneas de log como array JSON |
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/logs` | Últimas 20 lecturas; query opcional `variable=<campo>` |
+| GET | `/variables` | Lista de nombres de campos de medición detectados |
+| GET | `/series` | Series por variable: `variables=a,b&limit=N` |
 
 ### `frontend/app.py`
-Dashboard Streamlit que consulta `GET /logs` al presionar el botón "Actualizar" y muestra los registros en pantalla.
 
-### `mosquitto.conf`
-Configura el broker Mosquitto para escuchar en el puerto 1883 y permitir conexiones anónimas (adecuado para entorno de laboratorio).
+Consulta la API (`REST_API_URL`, por defecto `http://rest_api:5000` en Docker). Tabla en formato largo (variable / valor) y gráficos Plotly alimentados por `/series`.
+
+### Observabilidad (Prometheus / Grafana)
+
+- **Prometheus** scrapea el suscriptor (`:8000`) y **mongodb_exporter** (`:9216`).
+- El exporter debe llevar **`--collector.collstats`** junto con **`--mongodb.collstats-colls=agro_iot.lecturas`**; si no, Grafana mostrará *No data* en paneles basados en `$collStats`.
+- Dashboard de ejemplo: *Hito2 — Latencia, frecuencia y volumen* (provisionado en Grafana).
 
 ---
 
 ## Solución de problemas
 
-| Síntoma | Causa probable | Solución |
-|---------|----------------|----------|
-| El frontend muestra lista vacía | Los sensores aún no enviaron datos | Esperar ~5 segundos y volver a presionar "Actualizar" |
-| `Error: No se pudo conectar al backend` | La API no está lista | Verificar `docker compose logs rest_api` |
-| Los sensores no se conectan | Mosquitto tardó en iniciar | Reiniciar: `docker compose restart sensor1 sensor2` |
-| Puerto 8501 o 5000 ocupado | Otro proceso usa ese puerto | Cambiar el puerto en `docker-compose.yml` |
+| Síntoma | Causa probable | Qué hacer |
+|---------|-----------------|-----------|
+| Frontend no conecta al backend | API caída o URL incorrecta fuera de Docker | Revisar `docker compose logs rest_api`; si corrés Streamlit en el host, definí `REST_API_URL=http://localhost:5000`. |
+| Sin datos en Mongo / API vacía | Certificados IoT o endpoint incorrectos | Revisar logs de `subscriber` y sensores; validar `certs/` y variables AWS en compose. |
+| Grafana *No data* en paneles MongoDB | Exporter sin collector collstats | Confirmar en `docker-compose.yml` las flags `--collector.collstats` y `--mongodb.collstats-colls=agro_iot.lecturas`. |
+| `dockerDesktopLinuxEngine` / error de pipe | Docker Desktop no iniciado | Arrancar Docker Desktop y esperar a que el motor esté listo. |
+| Puerto 8501, 5000, 3000 u ocupado | Otro proceso usa el puerto | Cambiar el mapeo `puerto_host:puerto_contenedor` en `docker-compose.yml`. |
 
 ---
 
-## Notas de diseño
+## Notas
 
-- El archivo `logs.txt` reside en un **volumen Docker nombrado** (`logs_data`) montado en `/app/shared` tanto en el `subscriber` como en la `rest_api`. Esto garantiza que ambos contenedores accedan al mismo archivo.
-- Las versiones de dependencias están fijadas en los `Dockerfile` para asegurar builds reproducibles.
-- El servidor de desarrollo de Flask es suficiente para este demo; en producción se recomienda usar `gunicorn`.
+- El servidor de desarrollo de Flask es adecuado para la demo; en producción conviene un WSGI (por ejemplo Gunicorn) y autenticación en la API.
+- Cambiá las credenciales por defecto de **Grafana** si exponés los puertos a una red no confiable.
+- Las dependencias de Python están fijadas en los `Dockerfile` para builds reproducibles.

@@ -16,6 +16,7 @@ _FIELD_META = frozenset(
         "timestamp",
         "zona",
         "sensor",
+        "published_ts_ms",
     }
 )
 
@@ -78,6 +79,46 @@ def logs():
             .limit(20)
         )
         return jsonify(docs)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/series", methods=["GET"])
+def series():
+    """
+    Serie temporal por variable: últimos `limit` puntos por variable (cronológicos).
+    Query: variables=so2_ppm,temperatura_c&limit=300
+    """
+    raw = request.args.get("variables", "")
+    names = [v.strip() for v in raw.split(",") if v.strip()]
+    if not names:
+        return jsonify({})
+    if len(names) > 16:
+        return jsonify({"error": "máximo 16 variables por pedido"}), 400
+    for v in names:
+        if not _VAR_NAME_RE.match(v):
+            return jsonify({"error": f"nombre de variable inválido: {v}"}), 400
+    try:
+        lim = int(request.args.get("limit", 300))
+    except ValueError:
+        lim = 300
+    lim = max(10, min(lim, 2000))
+    try:
+        out = {}
+        for v in names:
+            proj = {"_id": 0, "timestamp": 1, v: 1}
+            docs = list(
+                coleccion.find({v: {"$exists": True}}, proj)
+                .sort("timestamp", DESCENDING)
+                .limit(lim)
+            )
+            docs.reverse()
+            out[v] = [
+                {"timestamp": d["timestamp"], "value": d.get(v)}
+                for d in docs
+                if d.get("timestamp") is not None
+            ]
+        return jsonify(out)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
